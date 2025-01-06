@@ -1,0 +1,3 @@
+
+# Exclude the large index file
+anthem_index.json.gz
