@@ -1,10 +1,12 @@
 version: "3"
 services:
   airflow:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: airflow-standalone
     ports:
       - "8080:8080"
     volumes:
-      - ./dags:/opt/airflow/dags     # If you have local DAGs
-      - ./scripts:/opt/airflow/scripts # If you have local scripts
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
