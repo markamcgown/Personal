@@ -2,6 +2,14 @@ services:
   airflow:
     build: .
     container_name: airflow-standalone
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      "
+      airflow db init &&
+      airflow users create --username admin --firstname Air --lastname Flow --role Admin --email admin@example.com --password admin &&
+      airflow webserver -p 8080 &
+      airflow scheduler
+      "
     environment:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
@@ -10,10 +18,3 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
-    command: >
-      /bin/bash -c "
-      airflow db init &&
-      airflow users create --username admin --firstname Air --lastname Flow --role Admin --email admin@example.com --password admin &&
-      airflow webserver -p 8080 &
-      airflow scheduler
-      "
