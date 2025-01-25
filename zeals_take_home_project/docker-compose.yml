@@ -2,28 +2,13 @@ services:
   airflow:
     build: .
     container_name: airflow-standalone
-    # Override the default ENTRYPOINT from apache/airflow so we can run multiple commands in Bash
+    # Override the default ENTRYPOINT from apache/airflow so we can run multiple commands
     entrypoint: ["/bin/bash", "-c"]
     command: >
-      "
-      # 1) Initialize the DB (sqlite)
       airflow db init &&
-
-      # 2) Create an admin user for the UI
-      airflow users create
-        --username admin
-        --firstname Air
-        --lastname Flow
-        --role Admin
-        --email admin@example.com
-        --password admin &&
-
-      # 3) Run the webserver in the background
+      airflow users create --username admin --firstname Air --lastname Flow --role Admin --email admin@example.com --password admin &&
       airflow webserver -p 8080 &
-
-      # 4) Finally, run the scheduler in the foreground so the container stays up
       airflow scheduler
-      "
     environment:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
