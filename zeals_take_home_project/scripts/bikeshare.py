@@ -1,5 +1,4 @@
 import os
-import time
 from datetime import datetime, timedelta
 import pandas as pd
 from google.cloud import bigquery
@@ -13,11 +12,11 @@ def extract_and_partition_bikeshare_data(project_id, dataset_table, bucket_name)
     date_str = yesterday.strftime("%Y-%m-%d")
 
     bq_client = bigquery.Client(project=project_id)
-    query = f\"\"\"
+    query = f"""
         SELECT *
         FROM `{dataset_table}`
         WHERE DATE(start_time) = '{yesterday}'
-    \"\"\"
+    """
     df = bq_client.query(query).to_dataframe()
     if df.empty:
         print(f"No data found for {date_str}. Exiting.")
