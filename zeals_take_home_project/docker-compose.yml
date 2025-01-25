@@ -1,12 +1,13 @@
-version: '3'
 services:
   airflow:
     build: .
+    container_name: airflow-standalone
+    command: ["standalone"]   # Runs webserver + scheduler + DB init
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    ports:
+      - "8080:8080"
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
-    environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    ports:
-      - "8080:8080"
-    command: webserver
