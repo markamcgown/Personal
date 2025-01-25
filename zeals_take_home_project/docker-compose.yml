@@ -7,19 +7,13 @@ services:
   airflow-init:
     image: apache/airflow:2.3.0
     container_name: airflow-init
+    # Override the entrypoint so we can run multiple commands in one single line
     entrypoint: ["/bin/bash", "-c"]
-    command: >
-      "airflow db init &&
-       airflow users create --username admin --firstname Air --lastname Flow
-         --role Admin --email admin@example.com --password admin"
+    # ONE SINGLE LINE for: db init + create user
+    command: "airflow db init && airflow users create --username admin --firstname Air --lastname Flow --role Admin --email admin@example.com --password admin"
     environment:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    # We don't publish ports or volumes for init container,
-    # but you can add volumes if needed for scripts/dags
-    # volumes:
-    #   - ./dags:/opt/airflow/dags
-    #   - ./scripts:/opt/airflow/scripts
 
   ###########################################################################
   # 2) AIRFLOW WEBSERVER
@@ -28,14 +22,16 @@ services:
     image: apache/airflow:2.3.0
     container_name: airflow-webserver
     depends_on:
-      - airflow-init  # ensures DB is ready and user is created
+      - airflow-init
     entrypoint: ["/bin/bash", "-c"]
+    # Start webserver on port 8080
     command: "airflow webserver -p 8080"
     environment:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
     ports:
       - "8080:8080"
+    # If you have local DAGs or scripts, mount them:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
@@ -49,6 +45,7 @@ services:
     depends_on:
       - airflow-webserver
     entrypoint: ["/bin/bash", "-c"]
+    # Start the scheduler in one line
     command: "airflow scheduler"
     environment:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
