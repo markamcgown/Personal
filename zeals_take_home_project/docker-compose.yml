@@ -10,3 +10,6 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
+      - ./scripts/service_account.json:/opt/airflow/service_account.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/service_account.json
