@@ -1,0 +1,11 @@
+version: '3'
+services:
+  airflow:
+    build: .
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    ports:
+      - "8080:8080"
