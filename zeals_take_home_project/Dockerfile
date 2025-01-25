@@ -5,6 +5,7 @@ FROM apache/airflow:2.3.0
 ENV AIRFLOW_HOME=/opt/airflow
 ENV AIRFLOW__CORE__EXECUTOR=SequentialExecutor
 ENV AIRFLOW__CORE__LOAD_EXAMPLES=False
+ENV PYTHONPATH="${PYTHONPATH}:/opt/airflow/scripts"
 
 # Copy and install your requirements
 COPY requirements.txt /requirements.txt
