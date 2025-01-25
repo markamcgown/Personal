@@ -1,55 +1,10 @@
 version: "3"
-
 services:
-  ###########################################################################
-  # 1) ONE-TIME INIT CONTAINER
-  ###########################################################################
-  airflow-init:
-    image: apache/airflow:2.3.0
-    container_name: airflow-init
-    # Override the entrypoint so we can run multiple commands in one single line
-    entrypoint: ["/bin/bash", "-c"]
-    # ONE SINGLE LINE for: db init + create user
-    command: "airflow db init && airflow users create --username admin --firstname Air --lastname Flow --role Admin --email admin@example.com --password admin"
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-
-  ###########################################################################
-  # 2) AIRFLOW WEBSERVER
-  ###########################################################################
-  airflow-webserver:
-    image: apache/airflow:2.3.0
-    container_name: airflow-webserver
-    depends_on:
-      - airflow-init
-    entrypoint: ["/bin/bash", "-c"]
-    # Start webserver on port 8080
-    command: "airflow webserver -p 8080"
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+  airflow:
+    build: .
+    container_name: airflow-standalone
     ports:
       - "8080:8080"
-    # If you have local DAGs or scripts, mount them:
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./scripts:/opt/airflow/scripts
-
-  ###########################################################################
-  # 3) AIRFLOW SCHEDULER
-  ###########################################################################
-  airflow-scheduler:
-    image: apache/airflow:2.3.0
-    container_name: airflow-scheduler
-    depends_on:
-      - airflow-webserver
-    entrypoint: ["/bin/bash", "-c"]
-    # Start the scheduler in one line
-    command: "airflow scheduler"
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./scripts:/opt/airflow/scripts
+      - ./dags:/opt/airflow/dags     # If you have local DAGs
+      - ./scripts:/opt/airflow/scripts # If you have local scripts
