@@ -1,9 +1,14 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
+import os
 
 def extract_task(**kwargs):
     from scripts.bikeshare import extract_and_partition_bikeshare_data
+
+    # Set the path to your service account JSON file
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/service_account.json"
+
     project_id = "bikeshareproject-448815"
     dataset_table = "bigquery-public-data.austin_bikeshare.bikeshare_trips"
     bucket_name = "your-bucket"
@@ -11,6 +16,10 @@ def extract_task(**kwargs):
 
 def create_external_table_task(**kwargs):
     from scripts.bikeshare import create_external_table_single_partition
+
+    # Set the path to your service account JSON file
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/service_account.json"
+
     project_id = "bikeshareproject-448815"
     dataset_id = "my_dataset"
     table_id = "bikeshare_ext"
