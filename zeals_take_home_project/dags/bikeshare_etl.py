@@ -1,76 +1,67 @@
+# dags/bikeshare_etl.py
+
+import time
+from datetime import datetime, timedelta
+
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
-from datetime import datetime, timedelta
-import os
 
 def extract_task(**kwargs):
     """
-    Extract bike share data by calling `extract_and_partition_bikeshare_data`.
-    Explicitly load credentials from the service_account.json file.
+    1) Creates (or gets) the unique GCS bucket
+    2) Extracts & partitions the data
+    3) XCom-push the bucket name so next task can use it
     """
-    from google.oauth2 import service_account
-    from scripts.bikeshare import extract_and_partition_bikeshare_data
-
-    # Path to the service account JSON inside the container
-    credentials_path = "/opt/airflow/service_account.json"
-    if not os.path.exists(credentials_path):
-        raise FileNotFoundError(
-            f"Service account file not found at {credentials_path}. "
-            f"Did you mount or copy it into the container?"
-        )
-
-    # Load credentials from JSON instead of using GOOGLE_APPLICATION_CREDENTIALS
-    creds = service_account.Credentials.from_service_account_file(credentials_path)
-
-    project_id = "bikeshareproject-448815"
-    dataset_table = "bigquery-public-data.austin_bikeshare.bikeshare_trips"
-    bucket_name = "your-bucket"
-
-    # Pass the credentials to your extract function
-    extract_and_partition_bikeshare_data(
-        project_id=project_id,
-        dataset_table=dataset_table,
-        bucket_name=bucket_name,
-        creds=creds
+    from scripts.bikeshare import (
+        creds,
+        PROJECT_ID,
+        create_or_get_bucket,
+        extract_and_partition_bikeshare_data
     )
+
+    # Make a unique bucket name each time the task runs
+    unique_bucket_name = f"bikeshare-bucket-{int(time.time())}"
+
+    create_or_get_bucket(unique_bucket_name, PROJECT_ID, creds)
+    dataset_table = "bigquery-public-data.austin_bikeshare.bikeshare_trips"
+    extract_and_partition_bikeshare_data(PROJECT_ID, dataset_table, unique_bucket_name, creds)
+
+    # Store the bucket name in XCom
+    kwargs['ti'].xcom_push(key='bucket_name', value=unique_bucket_name)
 
 
 def create_external_table_task(**kwargs):
     """
-    Create or recreate the external table by calling
-    `create_external_table_single_partition`.
-    Explicitly load credentials from the service_account.json file.
+    1) Pull the bucket name from XCom
+    2) Create the external BQ table with hive partitioning
     """
-    from google.oauth2 import service_account
-    from scripts.bikeshare import create_external_table_single_partition
+    from scripts.bikeshare import (
+        creds,
+        PROJECT_ID,
+        create_external_table_single_partition
+    )
 
-    credentials_path = "/opt/airflow/service_account.json"
-    if not os.path.exists(credentials_path):
-        raise FileNotFoundError(
-            f"Service account file not found at {credentials_path}. "
-            f"Did you mount or copy it into the container?"
-        )
+    ti = kwargs['ti']
+    unique_bucket_name = ti.xcom_pull(key='bucket_name', task_ids='extract_bikeshare_data')
 
-    creds = service_account.Credentials.from_service_account_file(credentials_path)
-
-    project_id = "bikeshareproject-448815"
+    # Must already have a dataset named "my_dataset" in project "PROJECT_ID"
     dataset_id = "my_dataset"
     table_id = "bikeshare_ext"
-    bucket_name = "your-bucket"
 
     create_external_table_single_partition(
-        project_id=project_id,
+        project_id=PROJECT_ID,
         dataset_id=dataset_id,
         table_id=table_id,
-        bucket_name=bucket_name,
-        delete_if_exists=True,
-        creds=creds
+        bucket_name=unique_bucket_name,
+        credentials=creds,
+        delete_if_exists=True
     )
 
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
+    # Adjust as you like
     'start_date': datetime(2023, 1, 1),
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
@@ -80,7 +71,7 @@ dag = DAG(
     'bikeshare_etl',
     default_args=default_args,
     description='Daily pipeline for Bikeshare data',
-    schedule_interval='0 3 * * *',
+    schedule_interval='@daily',
     catchup=False
 )
 
