@@ -10,23 +10,22 @@ from google.oauth2 import service_account
 from google.cloud.bigquery import ExternalConfig
 from google.api_core.exceptions import NotFound
 
-# Because we set GOOGLE_APPLICATION_CREDENTIALS in docker-compose.yml,
-# you could also rely on the default bigquery.Client() approach.
-# But let's be explicit and load from file:
-
 SERVICE_ACCOUNT_PATH = "/opt/airflow/scripts/service_account.json"
 
-# Build the credentials object
 SCOPES = [
     "https://www.googleapis.com/auth/bigquery",
     "https://www.googleapis.com/auth/devstorage.full_control",
 ]
 
+# Build credentials from the JSON file we mount in Docker
 creds = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_PATH, scopes=SCOPES
+    SERVICE_ACCOUNT_PATH,
+    scopes=SCOPES
 )
 
-PROJECT_ID = "bikeshareproject-448815"  # or read from creds.project_id
+# Or read from the creds object, but let's just set it manually:
+PROJECT_ID = "bikeshareproject-448815"
+
 
 def create_or_get_bucket(bucket_name, project_id, credentials):
     """
@@ -41,11 +40,15 @@ def create_or_get_bucket(bucket_name, project_id, credentials):
         print(f"Created bucket: {bucket.name}")
     return bucket
 
+
 def extract_and_partition_bikeshare_data(project_id, dataset_table, bucket_name, credentials):
     """
     - Queries the previous day's Austin Bikeshare data in BigQuery
     - Writes Parquet files to GCS with a single partition key: date_hour=YYYY-MM-DD-HH
     """
+    # Yesterday as an example (for real daily runs, do -1 day, not -365)
+    # Adjust if you'd like actual "yesterday" logic:
+    # yesterday = (datetime.utcnow() - timedelta(days=1)).date()
     yesterday = (datetime.utcnow() - timedelta(days=365)).date()
     date_str = yesterday.strftime("%Y-%m-%d")
 
@@ -61,6 +64,7 @@ def extract_and_partition_bikeshare_data(project_id, dataset_table, bucket_name,
         print(f"No data found for {date_str}. Exiting.")
         return
 
+    # Add partition columns
     df["date_partition"] = df["start_time"].dt.date.astype(str)
     df["hour_partition"] = df["start_time"].dt.hour.astype(int)
 
@@ -78,6 +82,7 @@ def extract_and_partition_bikeshare_data(project_id, dataset_table, bucket_name,
 
         os.remove(local_file_name)
         print(f"Uploaded {len(hour_df)} rows → {blob_path}")
+
 
 def create_external_table_single_partition(
     project_id: str,
@@ -101,6 +106,7 @@ def create_external_table_single_partition(
         f"gs://{bucket_name}/bikeshare/date_hour=*/data.parquet"
     ]
     external_config.hive_partitioning_mode = "AUTO"
+    # You can also set the partitioning field name if you'd like
     external_config.hive_partitioning_source_uri_prefix = f"gs://{bucket_name}/bikeshare/"
     table.external_data_configuration = external_config
 

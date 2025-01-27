@@ -7,8 +7,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      # Mount your local "dags" folder so Airflow sees your DAG
       - ./dags:/opt/airflow/dags
+
+      # Mount your "scripts" folder which contains bikeshare.py + service_account.json
       - ./scripts:/opt/airflow/scripts
-      - ./scripts/service_account.json:/opt/airflow/service_account.json:ro
+
     environment:
-      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/service_account.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/scripts/service_account.json
